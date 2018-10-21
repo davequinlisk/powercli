@@ -18,7 +18,7 @@ $scriptversion = "v1.0"
 $UIControl = (Get-Host).UI.RawUI
 $UIControl.WindowTitle = "Audit and Remediate RDM Script " + $scriptversion
 
-clear
+Clear-Host
 Write-Host "VMware vSphere " -foregroundcolor red -nonewline
 Write-Host "Raw Device Mapping(RDM) Audit and Remediate Script " $scriptversion
 Write-Host ""
@@ -62,9 +62,9 @@ $allCanonNamesToRemove = @{}
 #Input $VMCluster / Array of Objects
 #Output $ActiveCanonNames / Array
 Write-Host "Generating list of RDMs assigned to Virtual Machines..."
-$ActiveCanonNames = $VMCluster | Get-VM | Get-HardDisk -DiskType RawPhysical | Select ScsiCanonicalName
+$ActiveCanonNames = $VMCluster | Get-VM | Get-HardDisk -DiskType RawPhysical | Select-Object ScsiCanonicalName
 $ActiveCanonNames = $ActiveCanonNames.ScsiCanonicalName
-$ActiveCanonNames = $ActiveCanonNames | select -Unique
+$ActiveCanonNames = $ActiveCanonNames | Select-Object -Unique
 
 #Get List B - All RDM's Currently Reserved on Host
 #Input > $VMhosts / Array of Objects
@@ -74,9 +74,9 @@ Write-Host "Generating list of already reserved RDMs assigned to Hosts..."
 foreach ($VMhost in $VMhosts) {
         $esxcli = Get-EsxCli -VMHost $VMhost
         $strVMhost = $VMhost.Name
-        $ReservedCanonNames = $esxcli.storage.core.device.list() | Where IsPerenniallyReserved -EQ "TRUE" | Select Device
+        $ReservedCanonNames = $esxcli.storage.core.device.list() | Where-Object IsPerenniallyReserved -EQ "TRUE" | Select-Object Device
         $strReservedCanonNames = $ReservedCanonNames.Device
-        $strReservedCanonNames = $strReservedCanonNames | select -Unique
+        $strReservedCanonNames = $strReservedCanonNames | Select-Object -Unique
         $allReservedCanonNames.$strVMhost = @()
         #Add Host Name and associated Canon names to Hash Table
         foreach ($ReservedCanonName in $strReservedCanonNames) {
@@ -88,7 +88,7 @@ foreach ($VMhost in $VMhosts) {
 #Input > $allReservedCanonNames / Hash Table
 #Output > $allCanonNamesToAdd / Hash Table
 foreach ($hostinCanonFile in $allReservedCanonNames.Keys) {
-    $hostCanonNamesToAdd = compare-object $ActiveCanonNames $allReservedCanonNames.$hostinCanonFile -PassThru | where SideIndicator -EQ "<=" # Output list of active naa.ID's to reserve.
+    $hostCanonNamesToAdd = compare-object $ActiveCanonNames $allReservedCanonNames.$hostinCanonFile -PassThru | Where-Object SideIndicator -EQ "<=" # Output list of active naa.ID's to reserve.
     $allCanonNamesToAdd.$hostinCanonFile = @()
     foreach ($hostCanonNameToAdd in $hostCanonNamesToAdd) {
         $allCanonNamesToAdd.$hostinCanonFile += $hostCanonNameToAdd
@@ -100,7 +100,7 @@ foreach ($hostinCanonFile in $allReservedCanonNames.Keys) {
 #Output > $allCanonNamesToRemove / Hash Table
 foreach ($hostinCanonFile in $allReservedCanonNames.Keys) {
     # Output list of reserved naa.ID's to remove as they are not in use.
-    $hostCanonNamesToRemove = compare-object $ActiveCanonNames $allReservedCanonNames.$hostinCanonFile -PassThru | where SideIndicator -EQ "=>"
+    $hostCanonNamesToRemove = compare-object $ActiveCanonNames $allReservedCanonNames.$hostinCanonFile -PassThru | Where-Object SideIndicator -EQ "=>"
     # Add output to Hast Table for use later.
     $allCanonNamesToRemove.$hostinCanonFile = @()
     foreach ($hostCanonNameToRemove in $hostCanonNamesToRemove) {
@@ -112,7 +112,7 @@ foreach ($hostinCanonFile in $allReservedCanonNames.Keys) {
 #Create Reservation
 foreach ($VMhost in $allCanonNamesToAdd.Keys) {
     $esxcli = Get-EsxCli -VMHost $VMhost
-    clear
+    Clear-Host
     Write-Host ""
     Write-Host "The current ESXi host (" -NoNewline
     Write-Host $VMhost -ForegroundColor Red -NoNewline
@@ -143,7 +143,7 @@ foreach ($VMhost in $allCanonNamesToAdd.Keys) {
 #Remove Reservation
 foreach ($VMhost in $allCanonNamesToRemove.Keys) {
     $esxcli = Get-EsxCli -VMHost $VMhost
-    clear
+    Clear-Host
     Write-Host ""
     Write-Host "The current ESXi host (" -NoNewline
     Write-Host $VMhost -ForegroundColor Red -NoNewline
@@ -171,5 +171,5 @@ foreach ($VMhost in $allCanonNamesToRemove.Keys) {
 }
 
 Disconnect-VIServer -Confirm:$false
-clear
+Clear-Host
 Write-Host "Disconnected from vCenter, Thank you for utilising this script. Goodbye."
